@@ -7,8 +7,8 @@ import BarcodeScanner from './pages/code'
 import { API } from './api'
 import { useNavigate } from 'react-router-dom'
 
-// axios.defaults.baseURL = 'https://auncrm.pythonanywhere.com/clients'
-axios.defaults.baseURL = 'http://127.0.0.1:8000/api'
+axios.defaults.baseURL = 'https://auncargo.pythonanywhere.com/api'
+// axios.defaults.baseURL = 'http://127.0.0.1:8000/api'
 
 function App() {
   const nav = useNavigate()
