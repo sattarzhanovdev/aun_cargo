@@ -4,6 +4,7 @@ import { periods } from '../../utils';
 import { Icons } from '../../assets/icons';
 import { API } from '../../api';
 import { Components } from '..';
+import axios from 'axios';
 
 const StockTable = () => {  
   const [month, setMonth] = React.useState('');
@@ -11,6 +12,7 @@ const StockTable = () => {
   const [active, setActive] = React.useState(false);
   const [editActive, setEditActive] = React.useState(false);
   const [selectedWeek, setSelectedWeek] = React.useState(5); // 5 — Весь месяц
+  const [searchTerm, setSearchTerm] = React.useState('');
 
   const months = [
     "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -47,22 +49,36 @@ const StockTable = () => {
     return null;
   };
 
-  const filteredClients = clients?.filter(item => {
-    if (selectedWeek === 5) return true; // Весь месяц
-    const clientWeek = getWeekNumber(item.appointment_date);
-    return clientWeek === selectedWeek;
-  });
+  const filteredClients = clients
+    ?.filter(item => {
+      if (selectedWeek === 5) return true;
+      const clientWeek = getWeekNumber(item.appointment_date);
+      return clientWeek === selectedWeek;
+    })
+    .filter(item => item.client_id.toLowerCase().toString().includes(searchTerm.toLowerCase().trim()));
 
   return (
     <div className={c.workers}>
+      <div style={{ marginBottom: 20 }}>
+        <input
+          type="text"
+          placeholder="Поиск по номеру клиента..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          style={{ padding: 8, width: 300, fontSize: 16 }}
+        />
+      </div>
+
       <div className={c.table}>
         <table>
           <thead>
             <tr>
               <th><img src={Icons.edit} alt="edit" /></th>
-              <th>Код товара</th>
-              <th>Наименование</th>
+              <th>Трек-код товара</th>
+              <th>Номер клиента</th>
+              <th>Вес</th>
               <th>Прайс</th>
+              <th>Статус оплаты</th>
               <th>Статус</th>
               <th>
                 <button onClick={() => setActive(true)}>
@@ -72,17 +88,34 @@ const StockTable = () => {
             </tr>
           </thead>
           <tbody>
-            {clients?.length > 0 ? (
-              clients.map(item => (
+            {filteredClients?.length > 0 ? (
+              filteredClients.map(item => (
                 <tr key={item.id}>
-                  <td><img src={Icons.edit} alt="edit" onClick={() => {
-                    localStorage.setItem('edit_stock_ids', JSON.stringify([item.id]));
-                    setEditActive(true)
-                  }}/></td>
+                  <td>
+                    <img
+                      src={Icons.edit}
+                      alt="edit"
+                      onClick={() => {
+                        localStorage.setItem('edit_stock_ids', JSON.stringify([item]));
+                        setEditActive(true);
+                      }}
+                    />
+                  </td>
                   <td>{item.code}</td>
-                  <td>{item.name}</td>
-                  <td>{item.price}</td>
-                  <td>{item.order_status}</td> 
+                  <td>{item.client_id}</td>
+                  <td>{item.weight} кг</td>
+                  <td>{item.price} сом</td>
+                  <td>{item.payment_status}</td>
+                  <td
+                    className={
+                      item.order_status === 'В пути' ? c.inProgress :
+                      item.order_status === 'Готов к выдаче' ? c.delivered :
+                      item.order_status === 'Товар передан клиенту' ? c.took :
+                      c.defaultStatus
+                    }
+                  >
+                    {item.order_status}
+                  </td>
                 </tr>
               ))
             ) : (

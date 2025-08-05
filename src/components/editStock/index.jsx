@@ -9,18 +9,19 @@ const emptyRow = {
   price: '',
   code: '',
   order_status: '',
+  payment_status: ''
 }
 
 const EditStock = ({ setActive }) => {
-  const idsFromStorage = React.useMemo(() => {
+  // ⏬ Получаем готовые данные из localStorage
+  const initialData = React.useMemo(() => {
     return JSON.parse(localStorage.getItem('edit_stock_ids') || '[]')
   }, [])
 
-  // Заполнить строки по количеству ID
-  const initialRows = idsFromStorage.map(id => ({ ...emptyRow, id }))
-  const [rows, setRows] = React.useState(initialRows.length > 0 ? initialRows : [emptyRow])
+  const [rows, setRows] = React.useState(
+    initialData.length > 0 ? initialData : [emptyRow]
+  )
 
-  // ---------- изменение полей ----------
   const handleChange = (index, field, value) => {
     setRows(prev =>
       prev.map((row, i) =>
@@ -29,19 +30,23 @@ const EditStock = ({ setActive }) => {
     )
   }
 
-  const addRow = () => setRows(prev => [...prev, { ...emptyRow, id: null }])
+  const addRow = () => {
+    setRows(prev => [...prev, { ...emptyRow }])
+  }
 
-  // ---------- сохранить ----------
   const handleSave = () => {
     const payload = rows.map(item => ({
       id: item.id,
       code: item.code,
+      client_id: item.client_id,
       name: item.name,
+      weight: item.weight,
       price: +item.price || 0,
       order_status: item.order_status || '',
+      payment_status: item.payment_status || ''
     }))
 
-    API.putStock(idsFromStorage[0], payload)
+    API.putStock(payload[0].id, payload) // основной ID — любой из payload
       .then(res => {
         if (res.status === 200 || res.status === 201) {
           setActive(false)
@@ -62,18 +67,16 @@ const EditStock = ({ setActive }) => {
 
       {rows.map((row, idx) => (
         <div key={idx} className={c.addExpense__form}>
-          {/* ID (только для отображения) */}
           <div className={c.addExpense__form__item}>
             <label htmlFor={`id-${idx}`}>ID</label>
             <input
               id={`id-${idx}`}
               value={row.id || ''}
-              placeholder="ID (из localStorage)"
+              placeholder="ID"
               disabled
             />
           </div>
 
-          {/* код */}
           <div className={c.addExpense__form__item}>
             <label htmlFor={`code-${idx}`}>Код</label>
             <input
@@ -84,29 +87,17 @@ const EditStock = ({ setActive }) => {
             />
           </div>
 
-          {/* наименование */}
           <div className={c.addExpense__form__item}>
-            <label htmlFor={`name-${idx}`}>Наименование</label>
+            <label htmlFor={`weight-${idx}`}>Вес</label>
             <input
-              id={`name-${idx}`}
-              value={row.name}
-              placeholder="Введите наименование"
-              onChange={e => handleChange(idx, 'name', e.target.value)}
+              type="number"
+              id={`weight-${idx}`}
+              value={row.weight}
+              placeholder="Введите вес"
+              onChange={e => handleChange(idx, 'weight', e.target.value)}
             />
           </div>
 
-          {/* прайс */}
-          <div className={c.addExpense__form__item}>
-            <label htmlFor={`price-${idx}`}>Прайс</label>
-            <input
-              id={`price-${idx}`}
-              value={row.price}
-              placeholder="Введите прайс"
-              onChange={e => handleChange(idx, 'price', e.target.value)}
-            />
-          </div>
-
-          {/* статус */}
           <div className={c.addExpense__form__item}>
             <label htmlFor={`status-${idx}`}>Статус</label>
             <select
@@ -115,9 +106,24 @@ const EditStock = ({ setActive }) => {
               onChange={e => handleChange(idx, 'order_status', e.target.value)}
             >
               <option value="" disabled>Выберите статус</option>
-              <option value="Приехал">Приехал</option>
-              <option value="На складе">На складе</option>
-              <option value="Передан">Передан</option>
+              <option value="Заказ принят">Заказ принят</option>
+              <option value="В пути">В пути</option>
+              <option value="Готов к выдаче">Готов к выдаче</option>
+              <option value="Товар передан клиенту">Товар передан клиенту</option>
+            </select>
+          </div>
+
+          <div className={c.addExpense__form__item}>
+            <label htmlFor={`payment-${idx}`}>Статус оплаты</label>
+            <select
+              id={`status-${idx}`}
+              value={row.payment_status}
+              onChange={e => handleChange(idx, 'payment_status', e.target.value)}
+            >
+              <option value="" disabled>Выберите статус</option>
+              <option value="Не оплачен">Не оплачен</option>
+              <option value="Наличными">Наличными</option>
+              <option value="Оплачен картой">Оплачен картой</option>
             </select>
           </div>
         </div>

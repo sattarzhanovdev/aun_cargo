@@ -1,128 +1,51 @@
-import React from 'react'
-import c from './add.module.scss'
-import { Icons } from '../../assets/icons'
-import { API } from '../../api'
-
-const emptyRow = {
-  name: '',
-  price: '',
-  code: '',
-  order_status: '',
-}
+import React from 'react';
+import * as XLSX from 'xlsx';
+import { API } from '../../api';
 
 const AddStock = ({ setActive }) => {
-  const [rows, setRows] = React.useState([emptyRow])
-  const [categories, setCategories] = React.useState([])
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  // ---------- input helpers ----------
-  const handleChange = (index, field, value) => {
-    setRows(prev =>
-      prev.map((row, i) => {
-        if (i !== index) return row
-        // фиксируем первоначальное количество
-        if (field === 'quantity') {
-          return {
-            ...row,
-          }
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+    try {
+      // Отправка на backend — по одному или сразу массивом
+      await Promise.all(jsonData.map(item => {
+        const data = {
+          "code": item['条码内容'],
+          "client_id": item["代码"],
+          "weight": 0,
+          "price": 0,
+          "payment_status": "Не оплачен",
+          "order_status": "Заказ принят"
         }
-        return { ...row, [field]: value }
-      })
-    )
-  }
+        API.postStock(data)
+      }));
+      alert('Успешно загружено!');
+      setActive(false);
+    } catch (error) {
+      console.error('Ошибка загрузки:', error);
+      alert('Ошибка при загрузке данных');
+    }
+  };
 
-  const addRow = () => setRows(prev => [...prev, emptyRow])
-
-  // ---------- save ----------
-  const handleSave = () => {
-    const payload = rows.map(item => ({
-      ...item,
-      price: +item.price || 0,
-    }))
-
-    API.postStock(payload)
-      .then(res => {
-        if (res.status === 201 || res.status === 200) {
-          setActive(false)
-          window.location.reload()
-        }
-      })
-      .catch(err => console.error('Ошибка при сохранении товара:', err))
-  }
-
-  // ---------- fetch categories once ----------
-  React.useEffect(() => {
-    API.getCategories()
-      .then(res => setCategories(res.data))
-      .catch(err => console.error('Не удалось загрузить категории:', err))
-  }, [])
-
-  // ---------- render ----------
   return (
-    <div className={c.addExpense}>
-      <div className={c.addExpense__header}>
-        <h2>Добавление товара</h2>
-      </div>
-
-      {rows.map((row, idx) => (
-        <div key={idx} className={c.addExpense__form}>
-          {/* код */}
-          <div className={c.addExpense__form__item}>
-            <label htmlFor={`code-${idx}`}>Код</label>
-            <input
-              id={`code-${idx}`}
-              value={row.code}
-              placeholder="Код товара"
-              onChange={e => handleChange(idx, 'code', e.target.value)}
-            />
-          </div>
-
-          {/* наименование */}
-          <div className={c.addExpense__form__item}>
-            <label htmlFor={`name-${idx}`}>Наименование</label>
-            <input
-              id={`name-${idx}`}
-              value={row.name}
-              placeholder="Введите наименование"
-              onChange={e => handleChange(idx, 'name', e.target.value)}
-            />
-          </div>
-
-          {/* цена */}
-          <div className={c.addExpense__form__item}>
-            <label htmlFor={`price-${idx}`}>Прайс</label>
-            <input
-              id={`price-${idx}`}
-              value={row.price}
-              placeholder="Введите прайс"
-              onChange={e => handleChange(idx, 'price', e.target.value)}
-            />
-          </div>
-          
-          {/* цена */}
-          <div className={c.addExpense__form__item}>
-            <label htmlFor={`Статус-${idx}`}>Статус</label>
-            <select onChange={e => handleChange(idx, 'order_status', e.target.value)} value={row.order_status} id={`Статус-${idx}`}>
-              <option selected disabled>Выберите статус</option>
-              <option value="Приехал">Приехал</option>
-              <option value="На складе">На складе</option>
-              <option value="Передан">Передан</option>
-            </select>
-          </div>
-        </div>
-      ))}
-
-      <button onClick={addRow}>
-        <img src={Icons.plus} alt="" /> Добавить строку
-      </button>
-
-      <div className={c.res}>
-        <button onClick={() => setActive(false)}>Отменить</button>
-        <button onClick={handleSave}>
-          <img src={Icons.addGreen} alt="" /> Сохранить
-        </button>
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center'
+    }}>
+      <div style={{ background: '#fff', padding: 20, borderRadius: 8 }}>
+        <h3>Загрузить товары из Excel</h3>
+        <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} />
+        <br /><br />
+        <button onClick={() => setActive(false)}>Закрыть</button>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AddStock
+export default AddStock;

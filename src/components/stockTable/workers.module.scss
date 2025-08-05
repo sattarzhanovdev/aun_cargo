@@ -88,6 +88,21 @@
               }
             }
 
+            &.inProgress{
+              background: #F2F2F2;
+              color: #000000;
+            }
+
+            &.delivered{
+              background: #E6F7FF;
+              color: #000000;
+            }
+
+            &.took{
+              background: #c9ffaa;
+              color: #000000;
+            }
+
             .date{
               display: inline-block;
               margin-right: 4px;
