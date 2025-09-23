@@ -10,7 +10,7 @@ const AddStock = ({ setActive }) => {
   const { open, title, total, done, percent, runBatch, setOpen } = useBatchProgress();
 
   const mapRowToPayload = (row) => ({
-    code: String(row['条码内容'] ?? '').trim(),
+    code: String(row['条码内容'] ? row['条码内容'] : row['代碼']).trim(),
     client_id: String(row['代碼'] ?? '').trim(),
     weight: Number(row['weight'] ?? 0),
     price: Number(row['price'] ?? 0),
