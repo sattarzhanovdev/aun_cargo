@@ -72,7 +72,7 @@ const EditStock = ({ setActive, data }) => {
             <label htmlFor={`id-${idx}`}>ID</label>
             <input
               id={`id-${idx}`}
-              value={row.id || ''}
+              value={row.client_id || ''}
               placeholder="ID"
               disabled
             />
