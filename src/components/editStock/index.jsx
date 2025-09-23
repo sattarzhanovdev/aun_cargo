@@ -12,7 +12,7 @@ const emptyRow = {
   payment_status: ''
 }
 
-const EditStock = ({ setActive }) => {
+const EditStock = ({ setActive, data }) => {
   // ⏬ Получаем готовые данные из localStorage
   const initialData = React.useMemo(() => {
     return JSON.parse(localStorage.getItem('edit_stock_ids') || '[]')
@@ -59,6 +59,7 @@ const EditStock = ({ setActive }) => {
       })
   }
 
+  
   return (
     <div className={c.addExpense}>
       <div className={c.addExpense__header}>
@@ -74,16 +75,6 @@ const EditStock = ({ setActive }) => {
               value={row.id || ''}
               placeholder="ID"
               disabled
-            />
-          </div>
-
-          <div className={c.addExpense__form__item}>
-            <label htmlFor={`code-${idx}`}>Код</label>
-            <input
-              id={`code-${idx}`}
-              value={row.code}
-              placeholder="Код товара"
-              onChange={e => handleChange(idx, 'code', e.target.value)}
             />
           </div>
 
@@ -128,6 +119,16 @@ const EditStock = ({ setActive }) => {
           </div>
         </div>
       ))}
+
+      <div className={c.goods}>
+        {
+          data && data.filter(value => value.client_id === rows[0].client_id)?.map((item, index) => (
+            <div key={index} className={c.goods__item}>
+              <span>{item.code}</span>
+            </div>
+          ))
+        }
+      </div>
 
       <button onClick={addRow}>
         <img src={Icons.plus} alt="" /> Добавить строку

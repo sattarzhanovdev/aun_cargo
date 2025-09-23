@@ -95,6 +95,22 @@
     }
   }
 
+  .goods{
+    margin-top: 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    div{
+      height: 40px;
+      width: 90%;
+      border: 1px solid #4AC137;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      padding-left: 40px;
+    }
+  }
+
     button{
       margin-top: 50px;
       padding: 8px 12px;
