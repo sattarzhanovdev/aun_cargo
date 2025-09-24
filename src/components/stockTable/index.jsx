@@ -171,7 +171,7 @@ const StockTable = () => {
                     </td>
                     <td>{group.client_id}</td>
                     <td>{group.orders.length}</td>
-                    <td>{fmtKg(group.totalWeight)}</td>
+                    <td>{group.totalWeight} кг</td>
                     <td>{fmtSom(group.totalPrice)}</td>
                     <td>{paymentStatus || '—'}</td>
                     <td
