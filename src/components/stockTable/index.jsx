@@ -173,7 +173,7 @@ const StockTable = () => {
       const tasks = targets.map((item) => {
         return () =>
           // === TODO API: замени на свой эндпоинт удаления ===
-          axios.delete(`/api/stocks/${item.id}`);
+          axios.delete(`/stocks/${item.id}`);
       });
       await runBatch(tasks, { title: `Удаляем ${targets.length} позиций…` });
     }
