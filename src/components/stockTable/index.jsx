@@ -10,6 +10,13 @@ import axios from 'axios';
 import useBatchProgress from '../../hooks/useBatchProgress';
 import ProgressPopup from '../../components/ProgressPopup';
 
+const ORDER_STATUSES = [
+  'Заказ принят',
+  'В пути',
+  'Готов к выдаче',
+  'Товар передан клиенту',
+];
+
 const StockTable = () => {
   const [month, setMonth] = React.useState('');
   const [clients, setClients] = React.useState(null);
@@ -17,6 +24,17 @@ const StockTable = () => {
   const [editActive, setEditActive] = React.useState(false);
   const [selectedWeek, setSelectedWeek] = React.useState(5);
   const [searchTerm, setSearchTerm] = React.useState('');
+
+  // фильтрация по диапазону дат
+  const [dateFrom, setDateFrom] = React.useState('');
+  const [dateTo, setDateTo] = React.useState('');
+
+  // массовые действия
+  const [massDate, setMassDate] = React.useState(''); // обязательная дата
+  const [massStatus, setMassStatus] = React.useState(ORDER_STATUSES[0]);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [confirmMode, setConfirmMode] = React.useState(null); // 'update' | 'delete'
+  const [confirmTargets, setConfirmTargets] = React.useState([]);
 
   // попап с заказами клиента
   const [ordersOpen, setOrdersOpen] = React.useState(false);
@@ -33,6 +51,23 @@ const StockTable = () => {
       setClients(res.data || []);
     });
   }, []);
+
+  // === utils ===
+  const dateOnly = (d) => {
+    if (!d) return null;
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return null;
+    // YYYY-MM-DD
+    return dt.toISOString().slice(0, 10);
+  };
+  const inRange = (iso, from, to) => {
+    if (!iso) return false;
+    const v = dateOnly(iso);
+    if (!v) return false;
+    if (from && v < from) return false;
+    if (to && v > to) return false;
+    return true;
+  };
 
   // если у тебя есть дата записи, фильтр по неделе
   const getWeekNumber = (dateStr) => {
@@ -52,13 +87,17 @@ const StockTable = () => {
     if (selectedWeek !== 5) {
       list = list.filter(item => getWeekNumber(item.appointment_date) === selectedWeek);
     }
+    // фильтр по диапазону дат (по полю created_at; если у тебя другое — поменяй ниже)
+    if (dateFrom || dateTo) {
+      list = list.filter(item => inRange(item.created_at || item.date || item.createdAt, dateFrom, dateTo));
+    }
     // поиск по client_id
     const term = searchTerm.toLowerCase().trim();
     if (term) {
       list = list.filter(item => String(item.client_id || '').toLowerCase().includes(term));
     }
     return list;
-  }, [clients, selectedWeek, searchTerm]);
+  }, [clients, selectedWeek, searchTerm, dateFrom, dateTo]);
 
   // группируем по client_id (одна строка на клиента)
   const groupedByClient = React.useMemo(() => {
@@ -100,15 +139,48 @@ const StockTable = () => {
     setOrdersOpen(true);
   };
 
-  // === пример пакетного запуска (оставил как у тебя) ===
-  const handleMassAction = async () => {
-    if (!filteredClients?.length) return;
-    const tasks = filteredClients.map((item) => {
-      return () => axios.post('/api/stocks/some-action', { id: item.id }); // замени на свой эндпоинт
-    });
-    await runBatch(tasks, { title: 'Выполняем массовое действие по товарам…' });
-    // при необходимости — обновить
-    // const res = await API.getStocks(); setClients(res.data);
+  // === массовые действия ===
+  const collectByDate = React.useCallback((targetDate) => {
+    if (!clients?.length || !targetDate) return [];
+    const d = String(targetDate);
+    return (clients || []).filter((item) =>
+      dateOnly(item.created_at || item.date || item.createdAt) === d
+    );
+  }, [clients]);
+
+  const openConfirm = (mode) => {
+    // mode: 'update' | 'delete'
+    const targets = collectByDate(massDate);
+    setConfirmTargets(targets);
+    setConfirmMode(mode);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirm = async () => {
+    setConfirmOpen(false);
+    const targets = confirmTargets || [];
+    if (!targets.length) return;
+
+    if (confirmMode === 'update') {
+      // поштучно меняем статус
+      const tasks = targets.map((item) => {
+        return () =>
+          // === TODO API: замени на свой эндпоинт массового/штучного апдейта ===
+          axios.post(`/api/stocks/${item.id}/status`, { status: massStatus });
+      });
+      await runBatch(tasks, { title: `Обновляем статус (${massStatus})…` });
+    } else if (confirmMode === 'delete') {
+      const tasks = targets.map((item) => {
+        return () =>
+          // === TODO API: замени на свой эндпоинт удаления ===
+          axios.delete(`/api/stocks/${item.id}`);
+      });
+      await runBatch(tasks, { title: `Удаляем ${targets.length} позиций…` });
+    }
+
+    // обновить список после действий
+    const res = await API.getStocks();
+    setClients(res.data || []);
   };
 
   const fmt = (n) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
@@ -117,17 +189,77 @@ const StockTable = () => {
 
   return (
     <div className={c.workers}>
-      <div style={{ marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center' }}>
+      {/* Панель фильтров */}
+      <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           type="text"
-          placeholder="Поиск по номеру клиента..."
+          placeholder="Поиск по номеру клиента…"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          style={{ padding: 8, width: 300, fontSize: 16 }}
+          style={{ padding: 8, width: 260, fontSize: 16 }}
         />
-        {/* <button onClick={handleMassAction} style={{ padding: '8px 12px' }}>
-          Массовое действие (по одному с прогрессом)
-        </button> */}
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          c
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+        </label>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          по
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+        </label>
+        <button onClick={() => { setDateFrom(''); setDateTo(''); }} style={{ padding: '8px 10px' }}>
+          Сброс дат
+        </button>
+        {/* неделя (оставил как было) */}
+        <select value={selectedWeek} onChange={e => setSelectedWeek(Number(e.target.value))}>
+          <option value={5}>Все недели</option>
+          <option value={1}>1 неделя</option>
+          <option value={2}>2 неделя</option>
+          <option value={3}>3 неделя</option>
+          <option value={4}>4 неделя</option>
+        </select>
+      </div>
+
+      {/* Массовые действия */}
+      <div style={{
+        marginBottom: 18, padding: 12, border: '1px solid #e5e7eb',
+        borderRadius: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap'
+      }}>
+        <div style={{ fontWeight: 700 }}>Массовые действия по дате создания</div>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          Дата:
+          <input
+            type="date"
+            value={massDate}
+            onChange={(e) => setMassDate(e.target.value)}
+          />
+        </label>
+
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          Новый статус:
+          <select value={massStatus} onChange={(e) => setMassStatus(e.target.value)}>
+            {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+
+        <button
+          disabled={!massDate}
+          onClick={() => openConfirm('update')}
+          className={c.primaryBtn}
+        >
+          Применить статус по дате
+        </button>
+
+        <button
+          disabled={!massDate}
+          onClick={() => openConfirm('delete')}
+          style={{ padding: '8px 12px', border: '1px solid #ef4444', background: '#fff', color: '#ef4444', borderRadius: 10 }}
+        >
+          Удалить все за дату
+        </button>
+
+        <div style={{ marginLeft: 'auto', opacity: 0.8 }}>
+          Найдено на дату: {collectByDate(massDate).length}
+        </div>
       </div>
 
       <div className={c.table}>
@@ -253,6 +385,40 @@ const StockTable = () => {
                 Итого: {ordersData.orders.length} поз., {fmtSom(ordersData.orders.reduce((s, x) => s + (Number(x.price) || 0), 0))}
               </div>
               <button onClick={() => setOrdersOpen(false)} className={c.primaryBtn}>Закрыть</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Подтверждение массового действия */}
+      {confirmOpen && (
+        <div style={styles.backdrop} onClick={() => setConfirmOpen(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHead}>
+              <h3 style={{ margin: 0 }}>
+                {confirmMode === 'delete' ? 'Удалить товары?' : 'Изменить статусы?'}
+              </h3>
+              <button onClick={() => setConfirmOpen(false)} style={styles.closeBtn}>✕</button>
+            </div>
+            <div>
+              <p style={{ marginTop: 0 }}>
+                Дата: <b>{massDate || '—'}</b><br/>
+                Найдено позиций: <b>{confirmTargets.length}</b>
+                {confirmMode === 'update' && <> <br/>Новый статус: <b>{massStatus}</b></>}
+              </p>
+              <p style={{ opacity: .8, marginTop: -4 }}>
+                Действие выполнится поштучно с отображением прогресса.
+              </p>
+            </div>
+            <div style={styles.modalFoot}>
+              <button onClick={() => setConfirmOpen(false)} style={{ padding: '8px 12px' }}>Отмена</button>
+              <button
+                onClick={handleConfirm}
+                className={c.primaryBtn}
+                style={{ background: confirmMode === 'delete' ? '#ef4444' : undefined }}
+              >
+                {confirmMode === 'delete' ? 'Удалить' : 'Применить'}
+              </button>
             </div>
           </div>
         </div>
