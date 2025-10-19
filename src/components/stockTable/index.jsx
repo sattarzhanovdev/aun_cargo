@@ -166,7 +166,7 @@ const StockTable = () => {
       const tasks = targets.map((item) => {
         return () =>
           // === TODO API: замени на свой эндпоинт массового/штучного апдейта ===
-          axios.post(`/stocks/${item.id}/status`, { status: massStatus });
+          axios.post(`/stocks/${item.id}/status/`, { status: massStatus });
       });
       await runBatch(tasks, { title: `Обновляем статус (${massStatus})…` });
     } else if (confirmMode === 'delete') {
