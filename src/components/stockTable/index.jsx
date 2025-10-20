@@ -316,8 +316,8 @@ const StockTable = () => {
                     >
                       {group.lastStatus || '—'}
                     </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button onClick={() => openOrdersPopup(group)}>
+                    <td style={{ textAlign: 'left' }}>
+                      <button onClick={() => openOrdersPopup(group)} style={{background: "#216EFD", color: 'white', width: '150px', height: '40px', borderRadius: '7px', border: 0}}>
                         Заказы
                       </button>
                     </td>
@@ -367,12 +367,12 @@ const StockTable = () => {
                 <tbody>
                   {ordersData.orders.length ? ordersData.orders.map(o => (
                     <tr key={o.id}>
-                      <td>{o.id}</td>
-                      <td>{o.code}</td>
-                      <td>{fmtKg(o.weight || 0)}</td>
-                      <td>{fmtSom(o.price || 0)}</td>
-                      <td>{o.payment_status || '—'}</td>
-                      <td>{o.order_status || '—'}</td>
+                      <td style={{textAlign: 'center'}}>{o.id}</td>
+                      <td style={{textAlign: 'center'}}>{o.code}</td>
+                      <td style={{textAlign: 'center'}}>{fmtKg(o.weight || 0)}</td>
+                      <td style={{textAlign: 'center'}}>{fmtSom(o.price || 0)}</td>
+                      <td style={{textAlign: 'center'}}>{o.payment_status || '—'}</td>
+                      <td style={{textAlign: 'center'}}>{o.order_status || '—'}</td>
                     </tr>
                   )) : (
                     <tr><td colSpan={6} className={c.empty}>Нет заказов</td></tr>
