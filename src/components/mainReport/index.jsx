@@ -22,9 +22,11 @@ const MainReport = () => {
 React.useEffect(() => {
   Promise.all([API.getTransactions(), API.getStocks()])
     .then(([txRes, stockRes]) => {
-      const tx = txRes.data || []
-      const stocks = stockRes.data || []
+      const tx = txRes.data.results || []
+      const stocks = stockRes.data.results || []
 
+      console.log(tx);
+      
       // === Расходы ===
       const expense = tx
         .filter(t => t.type === 'expense')

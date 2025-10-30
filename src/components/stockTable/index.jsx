@@ -1,36 +1,36 @@
 // StockTable.jsx
-import React from 'react';
-import c from './workers.module.scss';
-import { Icons } from '../../assets/icons';
-import { API } from '../../api';
-import { Components } from '..';
-import axios from 'axios';
+import React from "react";
+import c from "./workers.module.scss";
+import { Icons } from "../../assets/icons";
+import { API } from "../../api";
+import { Components } from "..";
+import axios from "axios";
 
 // если используешь — оставляю
-import useBatchProgress from '../../hooks/useBatchProgress';
-import ProgressPopup from '../../components/ProgressPopup';
+import useBatchProgress from "../../hooks/useBatchProgress";
+import ProgressPopup from "../../components/ProgressPopup";
 
 const ORDER_STATUSES = [
-  'Заказ принят',
-  'В пути',
-  'Готов к выдаче',
-  'Товар передан клиенту',
+  "Заказ принят",
+  "В пути",
+  "Готов к выдаче",
+  "Товар передан клиенту",
 ];
 
 const StockTable = () => {
-  const [month, setMonth] = React.useState('');
+  const [month, setMonth] = React.useState("");
   const [clients, setClients] = React.useState(null);
   const [active, setActive] = React.useState(false);
   const [editActive, setEditActive] = React.useState(false);
   const [selectedWeek, setSelectedWeek] = React.useState(5);
-  const [searchTerm, setSearchTerm] = React.useState('');
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   // фильтрация по диапазону дат
-  const [dateFrom, setDateFrom] = React.useState('');
-  const [dateTo, setDateTo] = React.useState('');
+  const [dateFrom, setDateFrom] = React.useState("");
+  const [dateTo, setDateTo] = React.useState("");
 
   // массовые действия
-  const [massDate, setMassDate] = React.useState(''); // обязательная дата
+  const [massDate, setMassDate] = React.useState(""); // обязательная дата
   const [massStatus, setMassStatus] = React.useState(ORDER_STATUSES[0]);
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [confirmMode, setConfirmMode] = React.useState(null); // 'update' | 'delete'
@@ -38,17 +38,21 @@ const StockTable = () => {
 
   // попап с заказами клиента
   const [ordersOpen, setOrdersOpen] = React.useState(false);
-  const [ordersData, setOrdersData] = React.useState({ client_id: '', orders: [] });
+  const [ordersData, setOrdersData] = React.useState({
+    client_id: "",
+    orders: [],
+  });
 
-  const { open, title, total, done, percent, runBatch, setOpen } = useBatchProgress();
+  const { open, title, total, done, percent, runBatch, setOpen } =
+    useBatchProgress();
 
   React.useEffect(() => {
     const now = new Date();
-    const monthName = now.toLocaleString('ru', { month: 'long' });
+    const monthName = now.toLocaleString("ru", { month: "long" });
     setMonth(monthName.charAt(0).toUpperCase() + monthName.slice(1));
 
-    API.getStocks().then(res => {
-      setClients(res.data || []);
+    API.getStocks().then((res) => {
+      setClients(res.data.results || []);
     });
   }, []);
 
@@ -85,16 +89,28 @@ const StockTable = () => {
     let list = clients || [];
     // фильтр по неделе (если есть поле appointment_date — в твоём примере его нет)
     if (selectedWeek !== 5) {
-      list = list.filter(item => getWeekNumber(item.appointment_date) === selectedWeek);
+      list = list.filter(
+        (item) => getWeekNumber(item.appointment_date) === selectedWeek
+      );
     }
     // фильтр по диапазону дат (по полю created_at; если у тебя другое — поменяй ниже)
     if (dateFrom || dateTo) {
-      list = list.filter(item => inRange(item.created_at || item.date || item.createdAt, dateFrom, dateTo));
+      list = list.filter((item) =>
+        inRange(
+          item.created_at || item.date || item.createdAt,
+          dateFrom,
+          dateTo
+        )
+      );
     }
     // поиск по client_id
     const term = searchTerm.toLowerCase().trim();
     if (term) {
-      list = list.filter(item => String(item.client_id || '').toLowerCase().includes(term));
+      list = list.filter((item) =>
+        String(item.client_id || "")
+          .toLowerCase()
+          .includes(term)
+      );
     }
     return list;
   }, [clients, selectedWeek, searchTerm, dateFrom, dateTo]);
@@ -103,14 +119,14 @@ const StockTable = () => {
   const groupedByClient = React.useMemo(() => {
     const map = new Map();
     for (const item of filteredClients || []) {
-      const key = item.client_id || '—';
+      const key = item.client_id || "—";
       if (!map.has(key)) {
         map.set(key, {
           client_id: key,
           orders: [],
           totalWeight: 0,
           totalPrice: 0,
-          lastStatus: item.order_status || '',
+          lastStatus: item.order_status || "",
           paymentStatuses: new Set(),
         });
       }
@@ -118,35 +134,40 @@ const StockTable = () => {
       g.orders.push(item);
       g.totalWeight += Number(item.weight || 0);
       g.totalPrice += Number(item.price || 0);
-      g.paymentStatuses.add(item.payment_status || '');
+      g.paymentStatuses.add(item.payment_status || "");
       // возьмём «последний» по id как актуальный статус
       if (!g._maxId || (item.id || 0) > g._maxId) {
         g._maxId = item.id || 0;
-        g.lastStatus = item.order_status || '';
+        g.lastStatus = item.order_status || "";
       }
     }
-    return Array.from(map.values()).sort((a, b) => (b._maxId || 0) - (a._maxId || 0));
+    return Array.from(map.values()).sort(
+      (a, b) => (b._maxId || 0) - (a._maxId || 0)
+    );
   }, [filteredClients]);
 
+
+  
   // открыть попап «Заказы клиента»
   const openOrdersPopup = (group) => {
     setOrdersData({
       client_id: group.client_id,
-      orders: group.orders
-        .slice()
-        .sort((a, b) => (b.id || 0) - (a.id || 0)),
+      orders: group.orders.slice().sort((a, b) => (b.id || 0) - (a.id || 0)),
     });
     setOrdersOpen(true);
   };
 
   // === массовые действия ===
-  const collectByDate = React.useCallback((targetDate) => {
-    if (!clients?.length || !targetDate) return [];
-    const d = String(targetDate);
-    return (clients || []).filter((item) =>
-      dateOnly(item.created_at || item.date || item.createdAt) === d
-    );
-  }, [clients]);
+  const collectByDate = React.useCallback(
+    (targetDate) => {
+      if (!clients?.length || !targetDate) return [];
+      const d = String(targetDate);
+      return (clients || []).filter(
+        (item) => dateOnly(item.created_at || item.date || item.createdAt) === d
+      );
+    },
+    [clients]
+  );
 
   const openConfirm = (mode) => {
     // mode: 'update' | 'delete'
@@ -161,56 +182,87 @@ const StockTable = () => {
     const targets = confirmTargets || [];
     if (!targets.length) return;
 
-    if (confirmMode === 'update') {
+    if (confirmMode === "update") {
       // поштучно меняем статус
       const tasks = targets.map((item) => {
         return () =>
           // === TODO API: замени на свой эндпоинт массового/штучного апдейта ===
-          axios.post(`/stocks/${item.id}/status/`, { status: massStatus });
+          axios.post(`/clinets/stocks/${item.id}/status/`, {
+            status: massStatus,
+          })  
+            
       });
       await runBatch(tasks, { title: `Обновляем статус (${massStatus})…` });
-    } else if (confirmMode === 'delete') {
+    } else if (confirmMode === "delete") {
       const tasks = targets.map((item) => {
         return () =>
           // === TODO API: замени на свой эндпоинт удаления ===
-          axios.delete(`/stocks/${item.id}`);
+          axios.delete(`/clinets/stocks/${item.id}`);
       });
       await runBatch(tasks, { title: `Удаляем ${targets.length} позиций…` });
     }
 
     // обновить список после действий
     const res = await API.getStocks();
+    window.location.reload()
     setClients(res.data || []);
+    
   };
 
-  const fmt = (n) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
+  const fmt = (n) =>
+    new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n);
   const fmtSom = (n) => `${fmt(Math.round(n))} сом`;
   const fmtKg = (n) => `${fmt(n)} кг`;
 
   return (
     <div className={c.workers}>
       {/* Панель фильтров */}
-      <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <input
           type="text"
           placeholder="Поиск по номеру клиента…"
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           style={{ padding: 8, width: 260, fontSize: 16 }}
         />
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           c
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
         </label>
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           по
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
         </label>
-        <button onClick={() => { setDateFrom(''); setDateTo(''); }} style={{ padding: '8px 10px' }}>
+        <button
+          onClick={() => {
+            setDateFrom("");
+            setDateTo("");
+          }}
+          style={{ padding: "8px 10px" }}
+        >
           Сброс дат
         </button>
         {/* неделя (оставил как было) */}
-        <select value={selectedWeek} onChange={e => setSelectedWeek(Number(e.target.value))}>
+        <select
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(Number(e.target.value))}
+        >
           <option value={5}>Все недели</option>
           <option value={1}>1 неделя</option>
           <option value={2}>2 неделя</option>
@@ -220,12 +272,22 @@ const StockTable = () => {
       </div>
 
       {/* Массовые действия */}
-      <div style={{
-        marginBottom: 18, padding: 12, border: '1px solid #e5e7eb',
-        borderRadius: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap'
-      }}>
-        <div style={{ fontWeight: 700 }}>Массовые действия по дате создания</div>
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      <div
+        style={{
+          marginBottom: 18,
+          padding: 12,
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ fontWeight: 700 }}>
+          Массовые действия по дате создания
+        </div>
+        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           Дата:
           <input
             type="date"
@@ -234,16 +296,23 @@ const StockTable = () => {
           />
         </label>
 
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           Новый статус:
-          <select value={massStatus} onChange={(e) => setMassStatus(e.target.value)}>
-            {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          <select
+            value={massStatus}
+            onChange={(e) => setMassStatus(e.target.value)}
+          >
+            {ORDER_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>
         </label>
 
         <button
           disabled={!massDate}
-          onClick={() => openConfirm('update')}
+          onClick={() => openConfirm("update")}
           className={c.primaryBtn}
         >
           Применить статус по дате
@@ -251,13 +320,19 @@ const StockTable = () => {
 
         <button
           disabled={!massDate}
-          onClick={() => openConfirm('delete')}
-          style={{ padding: '8px 12px', border: '1px solid #ef4444', background: '#fff', color: '#ef4444', borderRadius: 10 }}
+          onClick={() => openConfirm("delete")}
+          style={{
+            padding: "8px 12px",
+            border: "1px solid #ef4444",
+            background: "#fff",
+            color: "#ef4444",
+            borderRadius: 10,
+          }}
         >
           Удалить все за дату
         </button>
 
-        <div style={{ marginLeft: 'auto', opacity: 0.8 }}>
+        <div style={{ marginLeft: "auto", opacity: 0.8 }}>
           Найдено на дату: {collectByDate(massDate).length}
         </div>
       </div>
@@ -266,7 +341,9 @@ const StockTable = () => {
         <table>
           <thead>
             <tr>
-              <th><img src={Icons.edit} alt="edit" /></th>
+              <th>
+                <img src={Icons.edit} alt="edit" />
+              </th>
               <th>Номер клиента</th>
               <th>Позиций</th>
               <th>Итоговый вес</th>
@@ -280,11 +357,11 @@ const StockTable = () => {
           </thead>
           <tbody>
             {groupedByClient?.length ? (
-              groupedByClient.map(group => {
+              groupedByClient.map((group) => {
                 const paymentStatus =
                   group.paymentStatuses.size === 1
                     ? Array.from(group.paymentStatuses)[0]
-                    : 'Разные';
+                    : "Разные";
 
                 return (
                   <tr key={group.client_id}>
@@ -295,29 +372,45 @@ const StockTable = () => {
                         onClick={() => {
                           // откроем редактор с последней записью клиента
                           const last = group.orders[0];
-                          localStorage.setItem('edit_stock_ids', JSON.stringify([last]));
+                          localStorage.setItem(
+                            "edit_stock_ids",
+                            JSON.stringify([last])
+                          );
                           setEditActive(true);
                         }}
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: "pointer" }}
                       />
                     </td>
                     <td>{group.client_id}</td>
                     <td>{group.orders.length}</td>
                     <td>{group.totalWeight} кг</td>
                     <td>{fmtSom(group.totalPrice)}</td>
-                    <td>{paymentStatus || '—'}</td>
+                    <td>{paymentStatus || "—"}</td>
                     <td
                       className={
-                        group.lastStatus === 'В пути' ? c.inProgress :
-                        group.lastStatus === 'Готов к выдаче' ? c.delivered :
-                        group.lastStatus === 'Товар передан клиенту' ? c.took :
-                        c.defaultStatus
+                        group.lastStatus === "В пути"
+                          ? c.inProgress
+                          : group.lastStatus === "Готов к выдаче"
+                          ? c.delivered
+                          : group.lastStatus === "Товар передан клиенту"
+                          ? c.took
+                          : c.defaultStatus
                       }
                     >
-                      {group.lastStatus || '—'}
+                      {group.lastStatus || "—"}
                     </td>
-                    <td style={{ textAlign: 'left' }}>
-                      <button onClick={() => openOrdersPopup(group)} style={{background: "#216EFD", color: 'white', width: '150px', height: '40px', borderRadius: '7px', border: 0}}>
+                    <td style={{ textAlign: "left" }}>
+                      <button
+                        onClick={() => openOrdersPopup(group)}
+                        style={{
+                          background: "#216EFD",
+                          color: "white",
+                          width: "150px",
+                          height: "40px",
+                          borderRadius: "7px",
+                          border: 0,
+                        }}
+                      >
                         Заказы
                       </button>
                     </td>
@@ -326,7 +419,9 @@ const StockTable = () => {
               })
             ) : (
               <tr>
-                <td><img src={Icons.edit} alt="edit" /></td>
+                <td>
+                  <img src={Icons.edit} alt="edit" />
+                </td>
                 <td colSpan={7}>Товаров нет</td>
               </tr>
             )}
@@ -349,10 +444,17 @@ const StockTable = () => {
         <div style={styles.backdrop} onClick={() => setOrdersOpen(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHead}>
-              <h3 style={{ margin: 0 }}>Заказы клиента {ordersData.client_id}</h3>
-              <button onClick={() => setOrdersOpen(false)} style={styles.closeBtn}>✕</button>
+              <h3 style={{ margin: 0 }}>
+                Заказы клиента {ordersData.client_id}
+              </h3>
+              <button
+                onClick={() => setOrdersOpen(false)}
+                style={styles.closeBtn}
+              >
+                ✕
+              </button>
             </div>
-            <div style={{ maxHeight: 520, overflow: 'auto' }}>
+            <div style={{ maxHeight: 520, overflow: "auto" }}>
               <table className={c.table}>
                 <thead>
                   <tr>
@@ -365,26 +467,51 @@ const StockTable = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {ordersData.orders.length ? ordersData.orders.map(o => (
-                    <tr key={o.id}>
-                      <td style={{textAlign: 'center'}}>{o.id}</td>
-                      <td style={{textAlign: 'center'}}>{o.code}</td>
-                      <td style={{textAlign: 'center'}}>{fmtKg(o.weight || 0)}</td>
-                      <td style={{textAlign: 'center'}}>{fmtSom(o.price || 0)}</td>
-                      <td style={{textAlign: 'center'}}>{o.payment_status || '—'}</td>
-                      <td style={{textAlign: 'center'}}>{o.order_status || '—'}</td>
+                  {ordersData.orders.length ? (
+                    ordersData.orders.map((o) => (
+                      <tr key={o.id}>
+                        <td style={{ textAlign: "center" }}>{o.id}</td>
+                        <td style={{ textAlign: "center" }}>{o.code}</td>
+                        <td style={{ textAlign: "center" }}>
+                          {fmtKg(o.weight || 0)}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {fmtSom(o.price || 0)}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {o.payment_status || "—"}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {o.order_status || "—"}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className={c.empty}>
+                        Нет заказов
+                      </td>
                     </tr>
-                  )) : (
-                    <tr><td colSpan={6} className={c.empty}>Нет заказов</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
             <div style={styles.modalFoot}>
               <div style={{ fontWeight: 800 }}>
-                Итого: {ordersData.orders.length} поз., {fmtSom(ordersData.orders.reduce((s, x) => s + (Number(x.price) || 0), 0))}
+                Итого: {ordersData.orders.length} поз.,{" "}
+                {fmtSom(
+                  ordersData.orders.reduce(
+                    (s, x) => s + (Number(x.price) || 0),
+                    0
+                  )
+                )}
               </div>
-              <button onClick={() => setOrdersOpen(false)} className={c.primaryBtn}>Закрыть</button>
+              <button
+                onClick={() => setOrdersOpen(false)}
+                className={c.primaryBtn}
+              >
+                Закрыть
+              </button>
             </div>
           </div>
         </div>
@@ -396,35 +523,58 @@ const StockTable = () => {
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHead}>
               <h3 style={{ margin: 0 }}>
-                {confirmMode === 'delete' ? 'Удалить товары?' : 'Изменить статусы?'}
+                {confirmMode === "delete"
+                  ? "Удалить товары?"
+                  : "Изменить статусы?"}
               </h3>
-              <button onClick={() => setConfirmOpen(false)} style={styles.closeBtn}>✕</button>
+              <button
+                onClick={() => setConfirmOpen(false)}
+                style={styles.closeBtn}
+              >
+                ✕
+              </button>
             </div>
             <div>
               <p style={{ marginTop: 0 }}>
-                Дата: <b>{massDate || '—'}</b><br/>
+                Дата: <b>{massDate || "—"}</b>
+                <br />
                 Найдено позиций: <b>{confirmTargets.length}</b>
-                {confirmMode === 'update' && <> <br/>Новый статус: <b>{massStatus}</b></>}
+                {confirmMode === "update" && (
+                  <>
+                    {" "}
+                    <br />
+                    Новый статус: <b>{massStatus}</b>
+                  </>
+                )}
               </p>
-              <p style={{ opacity: .8, marginTop: -4 }}>
+              <p style={{ opacity: 0.8, marginTop: -4 }}>
                 Действие выполнится поштучно с отображением прогресса.
               </p>
             </div>
             <div style={styles.modalFoot}>
-              <button onClick={() => setConfirmOpen(false)} style={{ padding: '8px 12px' }}>Отмена</button>
+              <button
+                onClick={() => setConfirmOpen(false)}
+                style={{ padding: "8px 12px" }}
+              >
+                Отмена
+              </button>
               <button
                 onClick={handleConfirm}
                 className={c.primaryBtn}
-                style={{ background: confirmMode === 'delete' ? '#ef4444' : undefined }}
+                style={{
+                  background: confirmMode === "delete" ? "#ef4444" : undefined,
+                }}
               >
-                {confirmMode === 'delete' ? 'Удалить' : 'Применить'}
+                {confirmMode === "delete" ? "Удалить" : "Применить"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {editActive && <Components.EditStock setActive={setEditActive} data={clients} />}
+      {editActive && (
+        <Components.EditStock setActive={setEditActive} data={clients} />
+      )}
       {active && <Components.AddStock setActive={setActive} />}
     </div>
   );
@@ -433,20 +583,42 @@ const StockTable = () => {
 // простые стили модалки (чтобы не править SCSS)
 const styles = {
   backdrop: {
-    position: 'fixed', inset: 0, background: 'rgba(15,23,42,.35)',
-    display: 'grid', placeItems: 'center', zIndex: 1000
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15,23,42,.35)",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 1000,
   },
   modal: {
-    width: 'min(1000px, 92vw)', background: '#fff', borderRadius: 16,
-    boxShadow: '0 20px 60px rgba(15,23,42,.25)', padding: 16, display: 'flex',
-    flexDirection: 'column', gap: 12
+    width: "min(1000px, 92vw)",
+    background: "#fff",
+    borderRadius: 16,
+    boxShadow: "0 20px 60px rgba(15,23,42,.25)",
+    padding: 16,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
   },
-  modalHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  modalFoot: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  modalHead: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalFoot: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
   closeBtn: {
-    border: '1px solid #e5e7eb', background: '#fff', borderRadius: 10,
-    padding: '6px 10px', cursor: 'pointer', fontWeight: 800
-  }
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    borderRadius: 10,
+    padding: "6px 10px",
+    cursor: "pointer",
+    fontWeight: 800,
+  },
 };
 
 export default StockTable;
