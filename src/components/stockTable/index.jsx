@@ -204,7 +204,6 @@ const StockTable = () => {
 
     // обновить список после действий
     const res = await API.getStocks();
-    window.location.reload()
     setClients(res.data || []);
     
   };
