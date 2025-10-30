@@ -23,7 +23,7 @@ React.useEffect(() => {
   Promise.all([API.getTransactions(), API.getStocks()])
     .then(([txRes, stockRes]) => {
       const tx = txRes.data.results || []
-      const stocks = stockRes.data.results || []
+      const stocks = stockRes.data || []
 
       console.log(tx);
       

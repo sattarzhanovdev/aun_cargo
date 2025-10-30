@@ -52,7 +52,7 @@ const StockTable = () => {
     setMonth(monthName.charAt(0).toUpperCase() + monthName.slice(1));
 
     API.getStocks().then((res) => {
-      setClients(res.data.results || []);
+      setClients(res.data || []);
     });
   }, []);
 
